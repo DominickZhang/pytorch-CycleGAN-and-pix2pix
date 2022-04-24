@@ -5,7 +5,6 @@ It will load a saved model from '--checkpoints_dir' and save the results to '--r
 
 It first creates model and dataset given the option. It will hard-code some parameters.
 It then runs inference for '--num_test' images and save results to an HTML file.
-
 Example (You need to train models first or download pre-trained models from our website):
     Test a CycleGAN model (both sides):
         python test.py --dataroot ./datasets/maps --name maps_cyclegan --model cycle_gan
@@ -33,6 +32,8 @@ from models import create_model
 from util.visualizer import save_images
 from util import html
 
+from fvcore.nn import FlopCountAnalysis
+
 try:
     import wandb
 except ImportError:
@@ -47,9 +48,20 @@ if __name__ == '__main__':
     opt.serial_batches = True  # disable data shuffling; comment this line if results on randomly chosen images are needed.
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
-    dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
+    #dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     model = create_model(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
+
+    ## count params
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f'The number of parameters: {n_params/1000000.0} (M)')
+
+    ## count flops
+    tensor = torch.rand(1,3,224,224)
+    flops = FlopCountAnalysis(model, tensor)
+    print(f'FLOPs: {flops/1.0e9} (G)')
+
+    exit('End!')
 
     # initialize logger
     if opt.use_wandb:
