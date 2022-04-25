@@ -31,6 +31,7 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
+import torch
 
 from fvcore.nn import FlopCountAnalysis
 
@@ -50,16 +51,20 @@ if __name__ == '__main__':
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     #dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     model = create_model(opt)      # create a model given opt.model and other options
-    model.setup(opt)               # regular setup: load and print networks; create schedulers
+    #model.setup(opt)               # regular setup: load and print networks; create schedulers
 
-    ## count params
-    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    ## count params=[]
+    n_params=[]
+    for model_name in [model.netG_A]:
+        for p in model_name.parameters():
+            n_params.append(p.numel())
+    n_params = sum(n_params)
     print(f'The number of parameters: {n_params/1000000.0} (M)')
 
     ## count flops
-    tensor = torch.rand(1,3,224,224)
-    flops = FlopCountAnalysis(model, tensor)
-    print(f'FLOPs: {flops/1.0e9} (G)')
+    tensor = torch.rand(1,3,256,256)
+    flops = FlopCountAnalysis(model.netG_A, tensor)
+    print(f'FLOPs: {flops.total()/1.0e9} (G)')
 
     exit('End!')
 
