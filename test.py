@@ -40,8 +40,22 @@ try:
 except ImportError:
     print('Warning: wandb package cannot be found. The option "--use_wandb" will result in error.')
 
+def test():
+    from models.swin_transformer import SwinGenerator
+    model = SwinGenerator(img_size=256, window_size=8)
+    n_params = sum([p.numel() for p in model.parameters()])
+    print(f'The number of parameters: {n_params/1.0e6} (M)')
+
+    tensor = torch.rand(1,3,256,256)
+    flops = FlopCountAnalysis(model, tensor)
+    print(f'FLOPs: {flops.total()/1.0e9} (G)')
+
+    exit()
 
 if __name__ == '__main__':
+
+    test()
+
     opt = TestOptions().parse()  # get test options
     # hard-code some parameters for test
     opt.num_threads = 0   # test code only supports num_threads = 0
