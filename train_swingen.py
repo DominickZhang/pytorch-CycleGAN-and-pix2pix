@@ -37,8 +37,8 @@ class BratsDatasetHDF5(Dataset):
 			index = idx
 		else:
 			index = self.file[self.key][self.cross_validation_index][idx]
-		img = self.file['data'][index][np.newaxis].transpose(0,3,1,2)
-		target = self.file['label'][index][np.newaxis].transpose(0,3,1,2)
+		img = self.file['data'][index]
+		target = self.file['label'][index]
 
 		if self.transform is not None:
 			img = self.transform(img)
@@ -80,8 +80,8 @@ def build_loader(datapath, key='train', cross_validation_index=0, resize_im=None
 	transform = None
 	if resize_im is not None:
 		transform = []
-		transform.append(transforms.Resize((resize_im, resize_im), interpolation=Image.BICUBIC))
 		transform.append(transforms.ToTensor())
+		transform.append(transforms.Resize((resize_im, resize_im), interpolation=transforms.InterpolationMode.BICUBIC))
 		transform = transforms.Compose(transform)
 
 	dataset = BratsDatasetHDF5(datapath, 
