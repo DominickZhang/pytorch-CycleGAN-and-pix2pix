@@ -13,6 +13,7 @@ import time
 from termcolor import colored
 import torch.distributed as dist
 import numpy as np
+from timm.utils.model import unwrap_model
 
 class BratsDatasetHDF5(Dataset):
 	def __init__(self, datapath, transform=None, transform_target=None, cross_validation_index=0, key='train'):
@@ -251,7 +252,7 @@ def main():
 	model.cuda()
 	optimizer = build_optimizer(model, optimizer_name='adam', base_lr=base_lr, weight_decay=weight_decay)
 	model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
-	model_without_ddp = timm.unwrap_model(model)
+	model_without_ddp = unwrap_model(model)
 
 	criterion = torch.nn.MSELoss()
 
