@@ -339,7 +339,7 @@ def train_one_epoch(args, model, criterion, data_loader, optimizer, epoch, logge
 		outputs = model(samples)
 		loss = criterion(outputs, targets)
 		optimizer.zero_grad()
-		loss.backword()
+		loss.backward()
 		grad_norm = get_grad_norm(model.parameters())
 		optimizer.step()
 
