@@ -401,7 +401,7 @@ def validate(model, criterion, data_loader, logger):
 
 	loss_meter.sync()
 
-	logger.info(f' * Loss {loss.avg:.5f}')
+	logger.info(f' * Loss {loss_meter.avg:.5f}')
 	return loss_meter.avg
 
 
