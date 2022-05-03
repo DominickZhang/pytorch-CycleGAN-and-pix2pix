@@ -21,6 +21,7 @@ class BratsDatasetHDF5(Dataset):
 
 		self.datapath = datapath
 		self.transform = transform
+		self.transform_target = transform_target
 		self.cross_validation_index = cross_validation_index
 		self.key = key
 
