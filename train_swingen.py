@@ -350,15 +350,16 @@ def train_one_epoch(args, model, criterion, data_loader, optimizer, epoch, logge
 			norm_meter.update(grad_norm)
 		batch_time.update(time.time() - end)
 
-		memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
-		etas = batch_time.avg * (num_steps - idx)
-		logger.info(
-			f'Train: [{epoch}/{args.total_epoch}][{idx}/{num_steps}]\t'
-			f'eta {datetime.timedelta(seconds=int(etas))} lr {args.base_lr:.6f} \t'
-			f'time {batch_time.val:.4f} ({batch_time.avg:.4f})\t'
-			f'loss {loss_meter.val:.4f} ({loss_meter.avg:.5f})\t'
-			f'grad_norm {norm_meter.val:.4f} ({norm_meter.avg:.4f})\t'
-			f'mem {memory_used:.0f}MB')
+		if idx % 10 == 0:
+			memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
+			etas = batch_time.avg * (num_steps - idx)
+			logger.info(
+				f'Train: [{epoch}/{args.total_epoch}][{idx}/{num_steps}]\t'
+				f'eta {datetime.timedelta(seconds=int(etas))} lr {args.base_lr:.6f} \t'
+				f'time {batch_time.val:.4f} ({batch_time.avg:.4f})\t'
+				f'loss {loss_meter.val:.4f} ({loss_meter.avg:.5f})\t'
+				f'grad_norm {norm_meter.val:.4f} ({norm_meter.avg:.4f})\t'
+				f'mem {memory_used:.0f}MB')
 
 	epoch_time = time.time() - start
 	loss_meter.sync()
