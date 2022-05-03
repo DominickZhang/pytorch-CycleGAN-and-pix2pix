@@ -39,7 +39,8 @@ def plot():
 
 	data_type = 'bravo'
 	#filename = 'output/plot_%s_data_modified.h5'%data_type
-	filename = f"/data/users/jzhang/NAS_robustness/output/plot_{data_type}_data_modified.h5"
+	#filename = f"/data/users/jzhang/NAS_robustness/output/plot_{data_type}_data_modified.h5"
+	filename = f"plot_{data_type}_data_modified.h5"
 	f = h5.File(filename, 'r')
 	data_sample = f['data'][()]
 	label_sample = f['label'][()]
@@ -61,6 +62,10 @@ def plot():
 
 		model = create_model().cuda()
 		ckpt = torch.load(model_name, map_location='cpu')
+		for key in ckpt['model']:
+			new_key = key.replace('module.', '')
+			ckpt['model'][new_key] = ckpt['model'][key]
+			ckpt['model'].pop(key)
 		model.load_state_dict(ckpt['model'], strict=True)
 		del ckpt
 
