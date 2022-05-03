@@ -73,7 +73,7 @@ def create_model(img_size=256):
 	return SwinGenerator(
 		img_size=img_size,
 		window_size=int(img_size/32),
-		in_chans = 4,
+		in_chans = 1,
 		out_ch=1,
 		)
 
