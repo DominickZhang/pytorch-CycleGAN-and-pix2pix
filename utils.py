@@ -41,6 +41,7 @@ def parse_args():
 	parser.add_argument('--local_rank', type=int, default=0)
 	parser.add_argument('--img_size', type=int, default=256)
 	parser.add_argument('--batch_size', type=int, default=6)
+	parser.add_argument('--start_epoch', type=int, default=0)
 	parser.add_argument('--total_epoch', type=int, default=150)
 	parser.add_argument('--save_max', type=int, default=10)
 	parser.add_argument('--base_lr', type=float, default=1e-4)
