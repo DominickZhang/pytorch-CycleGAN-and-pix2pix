@@ -62,11 +62,11 @@ def plot():
 
 		model = create_model().cuda()
 		ckpt = torch.load(model_name, map_location='cpu')
+		state_dict = {}
 		for key in ckpt['model']:
 			new_key = key.replace('module.', '')
-			ckpt['model'][new_key] = ckpt['model'][key]
-			ckpt['model'].pop(key)
-		model.load_state_dict(ckpt['model'], strict=True)
+			state_dict[new_key] = ckpt['model'][key]
+		model.load_state_dict(state_dict, strict=True)
 		del ckpt
 
 		inputs = torch.tensor(data_sample).permute(0,3,1,2).cuda()
