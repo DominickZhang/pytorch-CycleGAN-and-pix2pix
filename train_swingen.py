@@ -165,7 +165,7 @@ def auto_resume_helper(output_dir):
 def get_stats(output):
 	checkpoints = os.listdir(output)
 	checkpoints = [ckpt for ckpt in checkpoints if ckpt.endswith('pth')]
-	print(f"All checkpoints found in {output_dir}: {checkpoints}")
+	print(f"All checkpoints found in {output}: {checkpoints}")
 
 	min_loss = 1.0e10
 	max_loss = -1.0e10
