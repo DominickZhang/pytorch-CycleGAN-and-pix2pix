@@ -651,14 +651,13 @@ class PatchRecover(nn.Module):
         embed_dim (int): Number of linear projection output channels. Default: 96.
         norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
-    def __init__(self, input_resolution, in_chans=3, embed_dim=96):
+    def __init__(self, input_resolution, out_ch=3, embed_dim=96):
         super().__init__()
         self.input_resolution = input_resolution
-        self.out_ch = in_chans
+        self.out_ch = out_ch
         self.embed_dim = embed_dim
         # self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=8, stride=4, padding=2)
 
-        out_ch = self.out_ch
         hidden_ch = embed_dim // 2
         in_chans = embed_dim
         self.hidden_ch = hidden_ch
@@ -704,7 +703,7 @@ class PatchRecover(nn.Module):
 
 
 class SwinGenerator(nn.Module):
-    def __init__(self, img_size=224, patch_size=4, in_chans=3,
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, out_ch=3,
                  embed_dim=96, depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24],
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
@@ -722,7 +721,7 @@ class SwinGenerator(nn.Module):
         self.output_patches_resolution = self.encoder.output_patches_resolution
         self.connector = nn.Linear(self.out_dim, self.out_dim)
 
-        self.decoder = SwinDecoder(self.output_patches_resolution, patch_size, in_chans, 
+        self.decoder = SwinDecoder(self.output_patches_resolution, patch_size, out_ch, 
                 self.out_dim, depths, num_heads, 
                 window_size, mlp_ratio, qkv_bias, qk_scale, 
                 drop_rate, attn_drop_rate, drop_path_rate, 
@@ -877,7 +876,7 @@ class SwinDecoder(nn.Module):
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
     """
 
-    def __init__(self, input_resolution, patch_size=4, in_chans=3,
+    def __init__(self, input_resolution, patch_size=4, out_ch=3,
                  embed_dim=768, depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24],
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
@@ -919,7 +918,7 @@ class SwinDecoder(nn.Module):
 
         input_resolution = [input_resolution[0]*(2**(self.num_layers-1)), input_resolution[1]*(2**(self.num_layers-1)),]
         dim = int(embed_dim / 2**(self.num_layers-1))
-        self.patch_recover = PatchRecover(input_resolution, embed_dim=dim)
+        self.patch_recover = PatchRecover(input_resolution, out_ch=out_ch, embed_dim=dim)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 

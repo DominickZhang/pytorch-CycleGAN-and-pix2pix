@@ -74,6 +74,7 @@ def create_model(img_size=256):
 		img_size=img_size,
 		window_size=int(img_size/32),
 		in_chans = 4,
+		out_ch=1,
 		)
 
 
