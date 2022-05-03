@@ -46,6 +46,7 @@ def parse_args():
 	parser.add_argument('--base_lr', type=float, default=1e-4)
 	parser.add_argument('--weight_decay', type=float, default=0.0)
 	parser.add_argument('--patience', type=int, default=10)
+	parser.add_argument('--resume', type=str, default='')
 	args = parser.parse_args()
 	return args
 
