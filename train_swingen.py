@@ -248,6 +248,7 @@ def main():
 
 
 	model = create_model(img_size=img_size)
+	model.cuda()
 	optimizer = build_optimizer(model, optimizer_name='adam', base_lr=base_lr, weight_decay=weight_decay)
 	model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
 	model_without_ddp = timm.unwrap_model(model)
