@@ -1,5 +1,5 @@
 from utils import parse_args, get_rank, setup_for_distributed, is_main_process
-from utils import create_logger, AverageMeter, get_grad_norm
+from utils import create_logger, AverageMeter, get_grad_norm, load_checkpoint
 import os
 import datetime
 from models.swin_transformer import SwinGenerator
