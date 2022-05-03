@@ -173,14 +173,15 @@ def get_stats(output):
 	max_file = None
 	num_ckpts = len(checkpoints)
 	for ckpt in checkpoints:
-		ckpt_value = torch.load(ckpt, map_location='cpu')
+		ckpt_path = os.path.join(output, ckpt)
+		ckpt_value = torch.load(ckpt_path, map_location='cpu')
 		loss = ckpt_value['loss']
 		if min_loss > loss:
 			min_loss = loss
-			min_file = ckpt
+			min_file = ckpt_path
 		if max_loss < loss:
 			max_loss = loss
-			max_file = ckpt
+			max_file = ckpt_path
 	return max_loss, max_file, min_loss, min_file, num_ckpts
 
 
