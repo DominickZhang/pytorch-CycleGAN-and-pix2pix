@@ -52,7 +52,7 @@ def plot():
 	#model_name = 'output/%s/2dunet.h5'%model_type
 	#model_list = parse_models(keywords=['bravo_advtraining_noise_epsilon_0.2'])
 	#model_list = ['/data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/NAS-robustness/output/bravo_regular_0/2dunet.h5', '/data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness/output/bravo_RobNASv2_bugfix0518_tpe117_0/2dunet.h5']
-	model_list = ['/data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen/brats/ckpt_epoch_0.pth']
+	model_list = ['/data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen/brats/ckpt_epoch_1.pth']
 	for model_name in model_list:
 		epsilon = 0.2
 		#epsilon = 0.1
