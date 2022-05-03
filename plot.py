@@ -38,7 +38,8 @@ def plot():
 	np.set_printoptions(precision=4, suppress=True)
 
 	data_type = 'bravo'
-	filename = 'output/plot_%s_data_modified.h5'%data_type
+	#filename = 'output/plot_%s_data_modified.h5'%data_type
+	filename = f"/data/users/jzhang/NAS_robustness/output/plot_{data_type}_data_modified.h5"
 	f = h5.File(filename, 'r')
 	data_sample = f['data'][()]
 	label_sample = f['label'][()]
