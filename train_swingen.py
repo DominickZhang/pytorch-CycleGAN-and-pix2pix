@@ -391,14 +391,15 @@ def validate(model, criterion, data_loader, logger):
 		batch_time.update(time.time() - end)
 		end = time.time()
 
-		memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
-		info = (
-			f'Test: [{idx}/{len(data_loader)}]\t'
-			f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-			f'Loss {loss_meter.val:.5f} ({loss_meter.avg:.5f})\t'
-			f'Mem {memory_used:.0f}MB'
-			)
-		logger.info(info)
+		if idx % 10 == 0:
+			memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
+			info = (
+				f'Test: [{idx}/{len(data_loader)}]\t'
+				f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+				f'Loss {loss_meter.val:.5f} ({loss_meter.avg:.5f})\t'
+				f'Mem {memory_used:.0f}MB'
+				)
+			logger.info(info)
 
 	loss_meter.sync()
 
