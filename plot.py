@@ -109,6 +109,7 @@ def plot():
 			avg_dice_pred.append(cal_avg_dice_all_region(label_sample[sample_index], pred[sample_index]))
 			# avg_dice_adv.append(cal_avg_dice_all_region(label_sample[sample_index], pred_adv[sample_index]))
 		avg_dice_pred = np.array(avg_dice_pred)
+		print(avg_dice_pred)
 		# avg_dice_adv = np.array(avg_dice_adv)
 		#text = np.array([[None for _ in range(5)]].append(psnr_pred).append(psnr_adv))
 		text = np.concatenate([None_row, None_row, avg_dice_pred[np.newaxis]])
