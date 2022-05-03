@@ -83,7 +83,7 @@ def create_logger(output_dir, dist_rank=0, name=''):
 
 def load_checkpoint(args, model, optimizer, logger):
 	model_without_ddp = unwrap_model(model)
-	logger.info(f"=============> Resuming from {resume_file}...................")
+	logger.info(f"=============> Resuming from {args.resume}...................")
 	checkpoint = torch.load(args.resume, map_location='cpu')
 
 	if 'model' in checkpoint:
