@@ -265,10 +265,10 @@ def main():
 	if resume_file:
 		if args.resume:
 			logger.warning(f"auto-resume changing resume file from {args.resume} to {resume_file}")
-			logger.info(f"auto resuming from {resume_file}")
-			args.resume = resume_file
-		else:
-			logger.info(f"no checkpoint found in {output}, ignoring auto resume")
+		logger.info(f"auto resuming from {resume_file}")
+		args.resume = resume_file
+	else:
+		logger.info(f"no checkpoint found in {output}, ignoring auto resume")
 
 	if args.resume:
 		opt_metric = load_checkpoint(args, model, optimizer, logger)
