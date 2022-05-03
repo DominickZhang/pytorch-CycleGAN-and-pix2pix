@@ -7,6 +7,7 @@ from termcolor import colored
 import torch.distributed as dist
 import timm
 import torch
+from timm.utils.model import unwrap_model
 
 def get_grad_norm(parameters, norm_type=2):
     if isinstance(parameters, torch.Tensor):
@@ -81,7 +82,7 @@ def create_logger(output_dir, dist_rank=0, name=''):
     return logger
 
 def load_checkpoint(args, model, optimizer, logger):
-	model_without_ddp = timm.unwrap_model(model)
+	model_without_ddp = unwrap_model(model)
 	logger.info(f"=============> Resuming from {resume_file}...................")
 	checkpoint = torch.load(args.resume, map_location='cpu')
 
