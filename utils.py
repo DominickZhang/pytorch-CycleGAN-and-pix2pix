@@ -93,7 +93,7 @@ def load_checkpoint(args, model, optimizer, logger):
 		args.start_epoch = checkpoint['epoch'] + 1
 
 	if 'optimizer' in checkpoint:
-		optimizer.load_state_dict(checkpoint['optimizer'], strict=True)
+		optimizer.load_state_dict(checkpoint['optimizer'])
 
 	if 'opt_metric' in checkpoint:
 		opt_metric = checkpoint['opt_metric']
