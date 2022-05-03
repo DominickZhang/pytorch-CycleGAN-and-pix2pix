@@ -226,7 +226,7 @@ def main():
 	except:
 		pass
 
-	
+	os.makedirs(output, exist_ok=True)	
 	logger = create_logger(args.output, dist_rank=get_rank(), name="Swin Generator")
 	setup_for_distributed(is_main_process(), logger=logger)
 
