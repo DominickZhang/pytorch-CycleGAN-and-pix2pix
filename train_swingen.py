@@ -239,7 +239,7 @@ def main():
 	data_loader_val, dataset_val = build_loader(datapath, key='validation',
 										cross_validation_index = cross_validation_index,
 										resize_im = img_size, batch_size=batch_size)
-	if dataset_test:
+	if datapath_test:
 		data_loader_test, dataset_test = build_loader(datapath_test, key=None,
 										resize_im = img_size, batch_size=batch_size)
 	else:
