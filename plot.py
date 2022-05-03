@@ -70,7 +70,7 @@ def plot():
 		del ckpt
 
 		inputs = torch.tensor(data_sample).permute(0,3,1,2).cuda()
-		pred = model(inputs).permute(0,2,3,1).cpu().numpy()
+		pred = model(inputs).permute(0,2,3,1).detach().cpu().numpy()
 
 		#x_adv_sample = FGSM(model, data_sample, CT_2_label(label_sample), batch_size=6, gradient_only=True)
 		# x_adv  = data_sample + x_adv_sample*epsilon
