@@ -350,6 +350,8 @@ def train_one_epoch(args, model, criterion, data_loader, optimizer, epoch, logge
 			norm_meter.update(grad_norm)
 		batch_time.update(time.time() - end)
 
+		end = time.time()
+
 		if idx % 10 == 0:
 			memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
 			etas = batch_time.avg * (num_steps - idx)
