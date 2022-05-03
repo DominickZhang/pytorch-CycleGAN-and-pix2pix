@@ -114,7 +114,7 @@ def plot():
 		text = np.concatenate([None_row, None_row, avg_dice_pred[np.newaxis]])
 		#text_prefix_psnr = ['', 'PSNR: ', 'PSNR: ']
 		#text_prefix_psnr = ['', 'Dice: ', 'Dice: ']
-		text_prefix_psnr = ['', '', '']
+		text_prefix_psnr = ['', '', 'Dice: ']
 		text_label_psnr = ['Input MRI Images', 'CT Images (ground truth)', 'Prediction from SwinGenerator']
 		saveImage(array, text, text_prefix_psnr, text_label_psnr, n_row=3, n_col=n_col, path='output/pred_SwinGenerator.png')
 		#print('The shape of input array', array.shape)
