@@ -109,11 +109,13 @@ def build_optimizer(model, optimizer_name='adamw', base_lr=1e-4, weight_decay=0.
 	parameters = set_weight_decay(model, skip, skip_keywords)
 	opt_lower = optimizer_name.lower()
 	if opt_lower == 'sgd':
-		ptimizer = optim.SGD(parameters, momentum=0.9, nesterov=True,
+		ptimizer = torch.optim.SGD(parameters, momentum=0.9, nesterov=True,
 					lr=base_lr, weight_decay=weight_decay)
 	elif opt_lower == 'adamw':
-		optimizer = optim.AdamW(parameters, eps=1e-8, betas=(0.9, 0.999),
+		optimizer = torch.optim.AdamW(parameters, eps=1e-8, betas=(0.9, 0.999),
 					lr=base_lr, weight_decay=weight_decay)
+	elif opt_lower == 'adam':
+		optimizer = torch.optim.Adam(parameters, lr=base_lr, weight_decay=weight_decay, amsgrad=True)
 	return optimizer
 
 def set_weight_decay(model, skip_list=(), skip_keywords=()):
@@ -206,6 +208,7 @@ def main():
 	save_max = args.save_max
 	base_lr = args.base_lr
 	weight_decay = args.weight_decay
+	patience = args.patience
 	
 
 	if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
@@ -242,7 +245,7 @@ def main():
 
 
 	model = create_model(img_size=img_size)
-	optimizer = build_optimizer(model, optimizer_name='adamw', base_lr=base_lr, weight_decay=weight_decay)
+	optimizer = build_optimizer(model, optimizer_name='adam', base_lr=base_lr, weight_decay=weight_decay)
 	model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
 	model_without_ddp = timm.unwrap_model(model)
 
@@ -277,6 +280,8 @@ def main():
 	logger.info("Start training")
 	start_time = time.time()
 	start_epoch = args.start_epoch
+	patience_count = 0
+	loss_buffer = 1.0e10
 	for epoch in range(start_epoch, total_epoch):
 		data_loader_train.sampler.set_epoch(epoch)
 
@@ -289,6 +294,15 @@ def main():
 		logger.info(f"Loss of the network on the {len(dataset_val)} validation images: {loss:.5f}%")
 		opt_metric = min(opt_metric, loss)
 		logger.info(f"Optimal Metric: {opt_metric:.5f}%")
+		if loss >= loss_buffer:
+			patience_count += 1
+			if patience_count > patience:
+				logger.info(f"Validation loss has not decreased for {patience} epochs")
+				logger.info("Early stopping......")
+				break
+		else:
+			patience_count = 0
+		loss_buffer = loss
 
 	total_time = time.time() - start_time
 	total_time_str = str(datetime.timedelta(seconds=int(total_time)))
