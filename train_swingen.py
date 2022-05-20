@@ -299,7 +299,9 @@ def main():
 		max_loss, max_file_path, _, _, num_ckpts = get_stats(output=output)
 		if num_ckpts >= save_max and max_loss > loss:
 			os.remove(max_file_path)
-		save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
+			save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
+		else:
+			logger.info(f"Skip saving ckpt_epoch_{epoch}.pth...")
 		logger.info(f"Loss of the network on the {len(dataset_val)} validation images: {loss:.5f}%")
 		opt_metric = min(opt_metric, loss)
 		logger.info(f"Optimal Metric: {opt_metric:.5f}%")
@@ -409,3 +411,5 @@ def validate(model, criterion, data_loader, logger):
 
 if __name__ == '__main__':
 	main()
+
+	# CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1/brats/
