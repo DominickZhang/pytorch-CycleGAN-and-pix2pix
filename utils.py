@@ -34,25 +34,25 @@ def get_rank():
     return dist.get_rank()
 
 def parse_args():
-	parser = argparse.ArgumentParser(description="Swin Generator for Medical Imaging Synthesis")
-	parser.add_argument('--data_path', type=str)
-	parser.add_argument('--data_path_test', type=str, default='')
-	parser.add_argument('--cross_validation_index', type=int, default=0)
-	parser.add_argument('--output', type=str, default='output/')
-	parser.add_argument('--local_rank', type=int, default=0)
-	parser.add_argument('--img_size', type=int, default=256)
-	parser.add_argument('--batch_size', type=int, default=6)
-	parser.add_argument('--start_epoch', type=int, default=0)
-	parser.add_argument('--total_epoch', type=int, default=150)
-	parser.add_argument('--save_max', type=int, default=10)
-	parser.add_argument('--base_lr', type=float, default=1e-4)
-	parser.add_argument('--weight_decay', type=float, default=0.0)
-	parser.add_argument('--patience', type=int, default=10)
-	parser.add_argument('--resume', type=str, default='')
-	parser.add_argument('--eval', action='store_true')
+    parser = argparse.ArgumentParser(description="Swin Generator for Medical Imaging Synthesis")
+    parser.add_argument('--data_path', type=str)
+    parser.add_argument('--data_path_test', type=str, default='')
+    parser.add_argument('--cross_validation_index', type=int, default=0)
+    parser.add_argument('--output', type=str, default='output/')
+    parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--img_size', type=int, default=256)
+    parser.add_argument('--batch_size', type=int, default=6)
+    parser.add_argument('--start_epoch', type=int, default=0)
+    parser.add_argument('--total_epoch', type=int, default=150)
+    parser.add_argument('--save_max', type=int, default=10)
+    parser.add_argument('--base_lr', type=float, default=1e-4)
+    parser.add_argument('--weight_decay', type=float, default=0.0)
+    parser.add_argument('--patience', type=int, default=10)
+    parser.add_argument('--resume', type=str, default='')
+    parser.add_argument('--eval', action='store_true')
     parser.add_argument('--save_preds', action='store_true')
-	args = parser.parse_args()
-	return args
+    args = parser.parse_args()
+    return args
 
 @functools.lru_cache()
 def create_logger(output_dir, dist_rank=0, name=''):
@@ -83,25 +83,25 @@ def create_logger(output_dir, dist_rank=0, name=''):
     return logger
 
 def load_checkpoint(args, model, optimizer, logger):
-	model_without_ddp = unwrap_model(model)
-	logger.info(f"=============> Resuming from {args.resume}...................")
-	checkpoint = torch.load(args.resume, map_location='cpu')
+    model_without_ddp = unwrap_model(model)
+    logger.info(f"=============> Resuming from {args.resume}...................")
+    checkpoint = torch.load(args.resume, map_location='cpu')
 
-	if 'model' in checkpoint:
-		model.load_state_dict(checkpoint['model'], strict=True)
+    if 'model' in checkpoint:
+        model.load_state_dict(checkpoint['model'], strict=True)
 
-	if 'epoch' in checkpoint:
-		args.start_epoch = checkpoint['epoch'] + 1
+    if 'epoch' in checkpoint:
+        args.start_epoch = checkpoint['epoch'] + 1
 
-	if 'optimizer' in checkpoint:
-		optimizer.load_state_dict(checkpoint['optimizer'])
+    if 'optimizer' in checkpoint:
+        optimizer.load_state_dict(checkpoint['optimizer'])
 
-	if 'opt_metric' in checkpoint:
-		opt_metric = checkpoint['opt_metric']
-	else:
-		opt_metric = 0.0
+    if 'opt_metric' in checkpoint:
+        opt_metric = checkpoint['opt_metric']
+    else:
+        opt_metric = 0.0
 
-	return opt_metric
+    return opt_metric
 
 def is_main_process():
     return dist.get_rank() == 0
