@@ -258,7 +258,8 @@ def main():
 	model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
 	model_without_ddp = unwrap_model(model)
 
-	criterion = torch.nn.MSELoss()
+	#criterion = torch.nn.MSELoss()
+	criterion = torch.nn.L1Loss()
 
 	opt_metric = 1.0e5
 	resume_file = auto_resume_helper(output)
@@ -297,7 +298,9 @@ def main():
 		train_one_epoch(args, model, criterion, data_loader_train, optimizer, epoch, logger)
 		loss = validate(model, criterion, data_loader_val, logger)
 		max_loss, max_file_path, _, _, num_ckpts = get_stats(output=output)
-		if num_ckpts >= save_max and max_loss > loss:
+		if num_ckpts < save_max:
+			save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
+		elif max_loss > loss:
 			os.remove(max_file_path)
 			save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
 		else:
@@ -413,3 +416,7 @@ if __name__ == '__main__':
 	main()
 
 	# CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1/brats/
+	# CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val1/brats/ --cross_validation_index 1
+	# CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1235 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val5/brats/ --cross_validation_index 5
+	# CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1236 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val6/brats/ --cross_validation_index 6
+	# CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1237 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val7/brats/ --cross_validation_index 7
