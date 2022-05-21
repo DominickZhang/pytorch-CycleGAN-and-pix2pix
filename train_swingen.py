@@ -273,7 +273,7 @@ def main():
 		logger.info(f"Loss of the network on the {len(dataset_val)} validation images: {loss:.5f}%")
 
 		if datapath_test:
-			num_test_data, loss = test(model, criterion, datapath_test, logger)
+			num_test_data, loss = test(args, model, criterion, datapath_test, logger)
 			logger.info(f"Loss of the network on the {num_test_data} test images: {loss:.5f}%")
 
 	if args.eval:
@@ -317,7 +317,7 @@ def main():
 
 	if datapath_test:
 		logger.info("Start testing")
-		num_test_data, loss = test(model, criterion, datapath_test, logger)
+		num_test_data, loss = test(args, model, criterion, datapath_test, logger)
 		logger.info(f"Loss of the network on the {num_test_data} test images: {loss:.5f}%")
 
 
@@ -406,7 +406,7 @@ def validate(model, criterion, data_loader, logger):
 	return loss_meter.avg
 
 @torch.no_grad()
-def test(model, criterion, test_data_folder, logger):
+def test(args, model, criterion, test_data_folder, logger):
 	model.eval()
 
 	test_data_path = os.path.join(test_data_folder, 'test_data_syn.npy')
@@ -419,7 +419,7 @@ def test(model, criterion, test_data_folder, logger):
 
 	transform = []
 	transform.append(transforms.ToTensor())
-	transform.append(transforms.Resize((resize_im, resize_im), interpolation=transforms.InterpolationMode.BICUBIC))
+	transform.append(transforms.Resize((args.img_size, args.img_size), interpolation=transforms.InterpolationMode.BICUBIC))
 	transform = transforms.Compose(transform)
 
 	all_metrics_list = []
@@ -520,4 +520,4 @@ if __name__ == '__main__':
 	# CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1236 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val6/brats/ --cross_validation_index 6
 	# CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1237 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val7/brats/ --cross_validation_index 7
 
-	#CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1/brats/test/ --data_path_test /data/users/jzhang/NAS_robustness/output --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1/brats/ckpt_epoch_149.pth --eval
+	#CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1/brats/test/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1/brats/ckpt_epoch_149.pth --eval
