@@ -431,8 +431,9 @@ def test(args, model, criterion, test_data_folder, logger):
 	N = test_data.shape[0]
 	for idx in range(N):
 		logger.info(f">>> Predicting the {idx}(out of {N}) the volume...")
-		samples = torch.tensor(test_data[idx].transpose(3,0,1,2)).cuda(non_blocking=True)
+		samples = test_data[idx].transpose(3,0,1,2)
 		samples = transform(samples)
+		samples = torch.tensor(samples).cuda(non_blocking=True)
 		targets = torch.tensor(test_label[idx].transpose(3,0,1,2)).cuda(non_blocking=True)
 		outputs = model(samples)
 
