@@ -244,13 +244,6 @@ def main():
 	data_loader_val, dataset_val = build_loader(datapath, key='validation',
 										cross_validation_index = cross_validation_index,
 										resize_im = img_size, batch_size=batch_size)
-	if datapath_test:
-		data_loader_test, dataset_test = build_loader(datapath_test, key=None,
-										resize_im = img_size, batch_size=batch_size)
-	else:
-		data_loader_test = None
-		dataset_test = None
-
 
 	model = create_model(img_size=img_size)
 	model.cuda()
@@ -279,9 +272,9 @@ def main():
 		logger.info(f"{args.resume}")
 		logger.info(f"Loss of the network on the {len(dataset_val)} validation images: {loss:.5f}%")
 
-		if data_loader_test is not None:
-			loss = validate(model, criterion, data_loader_test, logger)
-			logger.info(f"Loss of the network on the {len(dataset_test)} test images: {loss:.5f}%")
+		if datapath_test:
+			num_test_data, loss = test(model, criterion, datapath_test, logger)
+			logger.info(f"Loss of the network on the {num_test_data} test images: {loss:.5f}%")
 
 	if args.eval:
 		return
@@ -322,10 +315,11 @@ def main():
 	total_time_str = str(datetime.timedelta(seconds=int(total_time)))
 	logger.info(f"Training time {total_time_str}")
 
-	if data_loader_test is not None:
+	if datapath_test:
 		logger.info("Start testing")
-		loss = validate(model, criterion, data_loader_test, logger)
-		logger.info(f"Loss of the network on the {len(dataset_test)} test images: {loss:.5f}%")
+		num_test_data, loss = test(model, criterion, datapath_test, logger)
+		logger.info(f"Loss of the network on the {num_test_data} test images: {loss:.5f}%")
+
 
 def train_one_epoch(args, model, criterion, data_loader, optimizer, epoch, logger):
 	model.train()
@@ -411,6 +405,111 @@ def validate(model, criterion, data_loader, logger):
 	logger.info(f' * Loss {loss_meter.avg:.5f}')
 	return loss_meter.avg
 
+@torch.no_grad()
+def test(model, criterion, test_data_folder, logger):
+	model.eval()
+
+	test_data_path = os.path.join(test_data_folder, 'test_data_syn.npy')
+	test_label_path = os.path.join(test_data_folder, 'test_label_syn.npy')
+	assert os.path.isfile(test_data_path) f"The test data does not exist! {test_data_path}"
+	assert os.path.isfile(test_label_path) f"The test label does not exist! {test_label_path}"
+
+	test_data = np.load(test_data_path)  # N x Modality x H x W x C
+	test_label = np.load(test_label_path)  # N x 1 x H x W x C
+
+	transform = []
+	transform.append(transforms.ToTensor())
+	transform.append(transforms.Resize((resize_im, resize_im), interpolation=transforms.InterpolationMode.BICUBIC))
+	transform = transforms.Compose(transform)
+
+	all_metrics_list = []
+
+	batch_time = AverageMeter()
+	loss_meter = AverageMeter()
+	end = time.time()
+
+	N = test_data.shape[0]
+	for idx in range(N):
+		logger.info(f">>> Predicting the {idx}(out of {N}) the volume...")
+		samples = torch.tensor(test_data[idx].transpose(3,0,1,2)).cuda(non_blocking=True)
+		samples = transform(samples)
+		targets = torch.tensor(test_label[idx].transpose(3,0,1,2)).cuda(non_blocking=True)
+		outputs = model(samples)
+
+		loss = criterion(outputs, CT_2_label(targets))
+
+		loss_meter.update(loss.item(), targets.size(0))
+		batch_time.update(time.time() - end)
+
+		metrics = get_all_metrics(targets-1000.0, pred_2_CT(outputs))
+		metrics = [metric.item() for metric in metrics]
+		all_metrics_list.append(metrics)
+
+		end = time.time()
+
+		if idx % 2 == 0:
+			memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
+			info = (
+				f'Test: [{idx}/{N}]\t'
+				f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+				f'Loss {loss_meter.val:.5f} ({loss_meter.avg:.5f})\t'
+				f'Mem {memory_used:.0f}MB'
+				)
+			logger.info(info)
+
+	loss_meter.sync()
+	all_metrics = np.mean(all_metrics_list, axis=0)
+
+	logger.info(f"* RMSE (Brain, Air, Bone, Soft): {all_metrics[0]:.2f}, {all_metrics[1]:.2f}, {all_metrics[2]:.2f}, {all_metrics[3]:.2f}\n"
+		f"* MAE (Brain, Air, Bone, Soft): {all_metrics[4]:.2f}, {all_metrics[5]:.2f}, {all_metrics[6]:.2f}, {all_metrics[7]:.2f}\n"
+		f"* Dice (Brain, Air, Bone, Soft): {all_metrics[8]:.4f}, {all_metrics[9]:.4f}, {all_metrics[10]:.4f}, {all_metrics[11]:.4f}\n"
+		)
+	return N, loss_meter.avg
+
+
+def cal_mask_mse(y_true, y_pred, y_mask):
+	se = (y_true - y_pred)**2
+	return (se*y_mask).sum()*1.0/y_mask.sum()
+
+def cal_mask_mae(y_true, y_pred, y_mask):
+	ae = (y_true - y_pred).abs()
+	return (ae*y_mask).sum()*1.0/y_mask.sum()
+
+def cal_F1_score_volume(y_true, y_pred):
+	return 2.0*(y_true*y_pred).sum()/(y_true.sum() + y_pred.sum())
+
+def pred_2_CT(array):
+	return (array + 0.5)*2500.0
+
+def CT_2_label(array):
+	return array/2500.0 - 0.5
+
+def get_all_metrics(y_true, y_pred):
+	mask_brain = y_true >= -500
+	mask_air = y_true < -500
+	mask_soft = (y_true > -500) * (y_true < 300)
+	mask_bone = y_true > 500
+
+	pred_brain = y_pred >= -500
+	pred_air = y_pred < -500
+	pred_soft = (y_pred > -500) * (y_pred < 300)
+	pred_bone = y_pred > 500
+
+	rmse_brain = cal_mask_mse(y_true, y_pred, mask_brain).sqrt()
+	rmse_air = cal_mask_mse(y_true, y_pred, mask_air).sqrt()
+	rmse_soft = cal_mask_mse(y_true, y_pred, mask_soft).sqrt()
+	rmse_bone = cal_mask_mse(y_true, y_pred, mask_bone).sqrt()
+
+	mae_brain = cal_mask_mae(y_true, y_pred, mask_brain)
+	mae_air = cal_mask_mae(y_true, y_pred, mask_air)
+	mae_soft = cal_mask_mae(y_true, y_pred, mask_soft)
+	mae_bone = cal_mask_mae(y_true, y_pred, mask_bone)
+
+	dice_brain = cal_F1_score_volume(mask_brain, pred_brain)
+	dice_air = cal_F1_score_volume(mask_air, pred_air)
+	dice_soft = cal_F1_score_volume(mask_soft, pred_soft)
+	dice_bone = cal_F1_score_volume(mask_bone, pred_bone)
+	return [rmse_brain, rmse_air, rmse_bone, rmse_soft, mae_brain, mae_air, mae_bone, mae_soft, dice_brain, dice_air, dice_bone, dice_soft]
 
 if __name__ == '__main__':
 	main()
@@ -420,3 +519,5 @@ if __name__ == '__main__':
 	# CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1235 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val5/brats/ --cross_validation_index 5
 	# CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1236 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val6/brats/ --cross_validation_index 6
 	# CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1237 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val7/brats/ --cross_validation_index 7
+
+	#CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1/brats/test/ --data_path_test 
