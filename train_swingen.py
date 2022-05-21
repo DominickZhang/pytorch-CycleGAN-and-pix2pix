@@ -427,6 +427,9 @@ def test(args, model, criterion, test_data_folder, logger):
     loss_meter = AverageMeter()
     end = time.time()
 
+    if args.save_preds:
+        pred_list = []
+
     N = test_data.shape[0]
     for idx in range(N):
         logger.info(f">>> Predicting the {idx}(out of {N}) the volume...")
@@ -439,6 +442,9 @@ def test(args, model, criterion, test_data_folder, logger):
 
         loss_meter.update(loss.item(), targets.size(0))
         batch_time.update(time.time() - end)
+
+        if args.save_preds:
+            pred_list.append(pred_2_CT(outputs).detach().cpu().numpy().transpose(1,2,3,0))
 
         metrics = get_all_metrics(targets-1000.0, pred_2_CT(outputs))
         metrics = [metric.item() for metric in metrics]
@@ -463,6 +469,11 @@ def test(args, model, criterion, test_data_folder, logger):
         f"* MAE (Brain, Air, Bone, Soft): {all_metrics[4]:.2f}, {all_metrics[5]:.2f}, {all_metrics[6]:.2f}, {all_metrics[7]:.2f}\n"
         f"* Dice (Brain, Air, Bone, Soft): {all_metrics[8]:.4f}, {all_metrics[9]:.4f}, {all_metrics[10]:.4f}, {all_metrics[11]:.4f}\n"
         )
+
+    if args.save_preds:
+        logger.info(f"Saving predictions...")
+        np.save(os.path.join(args.output, 'predictions.npy'), np.array(pred_list))
+
     return N, loss_meter.avg
 
 

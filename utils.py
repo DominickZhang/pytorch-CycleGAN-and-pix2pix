@@ -50,6 +50,7 @@ def parse_args():
 	parser.add_argument('--patience', type=int, default=10)
 	parser.add_argument('--resume', type=str, default='')
 	parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--save_preds', action='store_true')
 	args = parser.parse_args()
 	return args
 
