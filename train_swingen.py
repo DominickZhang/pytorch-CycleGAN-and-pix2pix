@@ -459,7 +459,7 @@ def test(args, model, criterion, test_data_folder, logger):
     loss_meter.sync()
     all_metrics = np.mean(all_metrics_list, axis=0)
 
-    logger.info(f"* RMSE (Brain, Air, Bone, Soft): {all_metrics[0]:.2f}, {all_metrics[1]:.2f}, {all_metrics[2]:.2f}, {all_metrics[3]:.2f}\n"
+    logger.info(f"\n* RMSE (Brain, Air, Bone, Soft): {all_metrics[0]:.2f}, {all_metrics[1]:.2f}, {all_metrics[2]:.2f}, {all_metrics[3]:.2f}\n"
         f"* MAE (Brain, Air, Bone, Soft): {all_metrics[4]:.2f}, {all_metrics[5]:.2f}, {all_metrics[6]:.2f}, {all_metrics[7]:.2f}\n"
         f"* Dice (Brain, Air, Bone, Soft): {all_metrics[8]:.4f}, {all_metrics[9]:.4f}, {all_metrics[10]:.4f}, {all_metrics[11]:.4f}\n"
         )
