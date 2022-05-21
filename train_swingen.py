@@ -418,7 +418,6 @@ def test(args, model, criterion, test_data_folder, logger):
     test_label = np.load(test_label_path)  # N x 1 x H x W x C
 
     transform = []
-    transform.append(transforms.ToTensor())
     transform.append(transforms.Resize((args.img_size, args.img_size), interpolation=transforms.InterpolationMode.BICUBIC))
     transform = transforms.Compose(transform)
 
@@ -432,8 +431,7 @@ def test(args, model, criterion, test_data_folder, logger):
     for idx in range(N):
         logger.info(f">>> Predicting the {idx}(out of {N}) the volume...")
         samples = test_data[idx].transpose(3,0,1,2)
-        samples = np.array([transform(samples[im_id]) for im_id in range(len(samples))])
-        samples = torch.tensor(samples).cuda(non_blocking=True)
+        samples = transform(torch.tensor(samples)).cuda(non_blocking=True)
         targets = torch.tensor(test_label[idx].transpose(3,0,1,2)).cuda(non_blocking=True)
         outputs = model(samples)
 
