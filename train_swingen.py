@@ -3,6 +3,7 @@ from utils import create_logger, AverageMeter, get_grad_norm, load_checkpoint
 import os
 import datetime
 from models.swin_transformer import SwinGenerator
+from monai.networks.nets import UNet
 from torch.utils.data import Dataset
 import h5py as h5
 import torch
@@ -69,13 +70,40 @@ class SubsetRandomSampler(torch.utils.data.Sampler):
     def set_epoch(self, epoch):
         self.epoch = epoch
 
-def create_model(img_size=256):
-    return SwinGenerator(
-        img_size=img_size,
-        window_size=int(img_size/32),
-        in_chans = 1,
-        out_ch=1,
-        )
+def create_model(model_name='swin_gen', img_size=256):
+    if model_name == 'swin_gen':
+        return SwinGenerator(
+            img_size=img_size,
+            window_size=int(img_size/32),
+            in_chans = 1,
+            out_ch=1,
+            )
+    elif model_name == 'unet_wide':
+        base_channel = 96
+        channels=(base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*16)
+        strides = tuple([2]*(len(channels)-1))
+        return UNet(
+                spatial_dims=2,
+                in_channels=1,
+                out_channels=1,
+                channels=channels,
+                strides=strides,
+                num_res_units=2,
+                )
+    elif model_name == 'unet_deep':
+        base_channel = 16
+        channels=(base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*24, base_channel*36, base_channel*48, base_channel*64)
+        strides = tuple([2]*(len(channels)-1))
+        return UNet(
+                spatial_dims=2,
+                in_channels=1,
+                out_channels=1,
+                channels=channels,
+                strides=strides,
+                num_res_units=2,
+                )
+    else:
+        raise ValueError(f"Unsupported model type: {model_name}")
 
 
 def build_loader(datapath, key='train', cross_validation_index=0, resize_im=None,
@@ -217,6 +245,7 @@ def main():
     base_lr = args.base_lr
     weight_decay = args.weight_decay
     patience = args.patience
+    model_name = args.model_name
     
 
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
@@ -245,7 +274,7 @@ def main():
                                         cross_validation_index = cross_validation_index,
                                         resize_im = img_size, batch_size=batch_size)
 
-    model = create_model(img_size=img_size)
+    model = create_model(model_name=model_name, img_size=img_size)
     model.cuda()
     optimizer = build_optimizer(model, optimizer_name='adam', base_lr=base_lr, weight_decay=weight_decay)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
@@ -538,3 +567,9 @@ if __name__ == '__main__':
     #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val5/brats/ckpt_epoch_149.pth --eval --cross_validation_index 5
     #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val6/brats/ckpt_epoch_147.pth --eval --cross_validation_index 6
     #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val7/brats/ckpt_epoch_149.pth --eval --cross_validation_index 7
+
+    ## 052522
+    # CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_wide/val0 --model_name unet_wide
+    # CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_wide/val1 --model_name unet_wide --cross_validation_index 1
+    # CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val0 --model_name unet_deep
+    # CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val1 --model_name unet_deep --cross_validation_index 1

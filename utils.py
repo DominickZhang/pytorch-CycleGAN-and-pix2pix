@@ -39,6 +39,7 @@ def parse_args():
     parser.add_argument('--data_path_test', type=str, default='')
     parser.add_argument('--cross_validation_index', type=int, default=0)
     parser.add_argument('--output', type=str, default='output/')
+    parser.add_argument('--model_name', type=str, default='swin_gen')
     parser.add_argument('--local_rank', type=int, default=0)
     parser.add_argument('--img_size', type=int, default=256)
     parser.add_argument('--batch_size', type=int, default=6)

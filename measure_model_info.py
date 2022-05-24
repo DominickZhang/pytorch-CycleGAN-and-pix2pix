@@ -12,13 +12,18 @@ swin_gen = SwinGenerator(
         out_ch=1,
         )
 
-base_channel = 96
+#base_channel = 16
+#channels=(base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*16),
+#base_channel = 96
+base_channel = 16
+channels=(base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*24, base_channel*36, base_channel*48, base_channel*64)
+strides = tuple([2]*(len(channels)-1))
 unet = UNet(
         spatial_dims=2,
         in_channels=1,
         out_channels=1,
-        channels=(base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*16),
-        strides=(2, 2, 2, 2),
+        channels=channels,
+        strides=strides,
         num_res_units=2,
         )
 
