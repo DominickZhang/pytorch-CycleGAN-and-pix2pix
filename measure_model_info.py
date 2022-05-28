@@ -1,4 +1,4 @@
-from models.swin_transformer import SwinGenerator
+from models.swin_transformer import SwinGenerator, SwinGeneratorResidual
 from monai.networks.nets import UNet, UNETR
 from fvcore.nn import FlopCountAnalysis
 import copy
@@ -11,6 +11,21 @@ swin_gen = SwinGenerator(
         in_chans = 1,
         out_ch=1,
         )
+
+swin_gen_residual = SwinGeneratorResidual(
+            img_size=img_size,
+            window_size=int(img_size/32),
+            in_chans = 1,
+            out_ch=1,
+            )
+
+swin_gen_residual_dense = SwinGeneratorResidual(
+            img_size=img_size,
+            window_size=int(img_size/32),
+            in_chans = 1,
+            out_ch=1,
+            residual_dense=True,
+            )
 
 #base_channel = 16
 #channels=(base_channel, base_channel*2, base_channel*4, base_channel*8, base_channel*16),
@@ -40,7 +55,8 @@ def flops(model, resolution=224):
     return flops.total() / 1e9
 
 def main():
-    model_list = [unet]
+    #model_list = [unet]
+    model_list = [swin_gen_residual, swin_gen_residual_dense]
     string_list = []
     for model in model_list:
         n_params = params(model)/1.0e6

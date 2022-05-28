@@ -408,7 +408,8 @@ class BasicLayer(nn.Module):
 
     def __init__(self, dim, input_resolution, depth, num_heads, window_size,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False):
+                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False,
+                 residual_dense=False, is_residual=False):
 
         super().__init__()
         self.dim = dim
@@ -428,6 +429,9 @@ class BasicLayer(nn.Module):
                                  norm_layer=norm_layer)
             for i in range(depth)])
 
+        self.residual_dense = residual_dense
+        self.is_residual = is_residual
+
         # patch merging layer
         if downsample is not None:
             self.downsample = downsample(input_resolution, dim=dim, norm_layer=norm_layer)
@@ -435,14 +439,22 @@ class BasicLayer(nn.Module):
             self.downsample = None
 
     def forward(self, x):
-        for blk in self.blocks:
+        residual = []
+        for idx, blk in enumerate(self.blocks):
             if self.use_checkpoint:
                 x = checkpoint.checkpoint(blk, x)
             else:
                 x = blk(x)
+
+            if self.is_residual:
+                residual.append(x)
+
+        if (not self.residual_dense) and self.is_residual:
+            residual = [residual[-1]]
+
         if self.downsample is not None:
             x = self.downsample(x)
-        return x
+        return x, residual
 
     def extra_repr(self) -> str:
         return f"dim={self.dim}, input_resolution={self.input_resolution}, depth={self.depth}"
@@ -504,11 +516,16 @@ class BasicLayer_Decoder(nn.Module):
             self.upsample = None
 
     def forward(self, x):
-        for blk in self.blocks:
+        x, feature_list = x
+        for idx, blk in enumerate(self.blocks):
+            if feature_list and idx < len(feature_list):
+                x += feature_list[idx]
+
             if self.use_checkpoint:
                 x = checkpoint.checkpoint(blk, x)
             else:
                 x = blk(x)
+
         if self.upsample is not None:
             x = self.upsample(x)
         return x
@@ -728,9 +745,56 @@ class SwinGenerator(nn.Module):
                 norm_layer, ape, patch_norm, use_checkpoint)
 
     def forward(self, x):
-        x = self.encoder(x)
+        x, _ = self.encoder(x)
         x = self.connector(x)
-        x = self.decoder(x)
+        x = self.decoder((x, []))
+        return x
+
+class SwinGeneratorResidual(nn.Module):
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, out_ch=3,
+                 embed_dim=96, depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24],
+                 window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
+                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
+                 norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
+                 use_checkpoint=False,
+                 residual_dense=False, is_residual=True,
+                 **kwargs):
+        super().__init__()
+
+        self.encoder = SwinEncoder(img_size, patch_size, in_chans, 
+                embed_dim, depths, num_heads, 
+                window_size, mlp_ratio, qkv_bias, qk_scale, 
+                drop_rate, attn_drop_rate, drop_path_rate, 
+                norm_layer, ape, patch_norm, use_checkpoint,
+                residual_dense, is_residual,
+                )
+
+        self.out_dim = self.encoder.num_features
+        self.output_patches_resolution = self.encoder.output_patches_resolution
+        self.connector = nn.Linear(self.out_dim, self.out_dim)
+
+        self.decoder = SwinDecoder(self.output_patches_resolution, patch_size, out_ch, 
+                self.out_dim, depths, num_heads, 
+                window_size, mlp_ratio, qkv_bias, qk_scale, 
+                drop_rate, attn_drop_rate, drop_path_rate, 
+                norm_layer, ape, patch_norm, use_checkpoint)
+
+    def forward(self, x):
+        x, residual = self.encoder(x)
+        
+        for idx, e in enumerate(residual):
+            print(f"The {idx}-th stage >>>>>>>>>>>>")
+            for idxi, ei in enumerate(e):
+                if isinstance(ei, list):
+                    ei.reverse()
+                    print([eii.shape for eii in ei])
+                else:
+                    print(f"The shape of downsampled feature maps: {ei.shape}")
+            e.reverse()
+        residual.reverse()
+
+        x = self.connector(x)
+        x = self.decoder((x, residual))
         return x
 
 
@@ -765,7 +829,8 @@ class SwinEncoder(nn.Module):
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-                 use_checkpoint=False):
+                 use_checkpoint=False,
+                 residual_dense=False, is_residual=False):
         super().__init__()
 
         self.num_layers = len(depths)
@@ -774,6 +839,9 @@ class SwinEncoder(nn.Module):
         self.patch_norm = patch_norm
         self.num_features = int(embed_dim * 2 ** (self.num_layers - 1))
         self.mlp_ratio = mlp_ratio
+
+        self.is_residual = is_residual
+        self.residual_dense = residual_dense
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -810,7 +878,8 @@ class SwinEncoder(nn.Module):
                                drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
                                norm_layer=norm_layer,
                                downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
-                               use_checkpoint=use_checkpoint)
+                               use_checkpoint=use_checkpoint,
+                               residual_dense=residual_dense, is_residual=is_residual)
             self.layers.append(layer)
 
         self.norm = norm_layer(self.num_features)
@@ -834,21 +903,24 @@ class SwinEncoder(nn.Module):
     def no_weight_decay_keywords(self):
         return {'relative_position_bias_table'}
 
-    def forward_features(self, x):
+    def forward(self, x):
+        residual = []
+
         x = self.patch_embed(x)
         if self.ape:
             x = x + self.absolute_pos_embed
         x = self.pos_drop(x)
 
+        if self.is_residual:
+            residual.append([x])
+
         for layer in self.layers:
-            x = layer(x)
+            x, residual_dense = layer(x)
+            if self.is_residual:
+                residual.append(residual_dense)
 
         x = self.norm(x)  # B L C
-        return x
-
-    def forward(self, x):
-        x = self.forward_features(x)
-        return x
+        return x, residual
 
 class SwinDecoder(nn.Module):
     r""" Swin Transformer
@@ -923,7 +995,6 @@ class SwinDecoder(nn.Module):
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         self.norm = norm_layer(self.embed_dim)
-  
 
         self.apply(self._init_weights)
 
@@ -944,17 +1015,20 @@ class SwinDecoder(nn.Module):
     def no_weight_decay_keywords(self):
         return {'relative_position_bias_table'}
 
-    def forward_features(self, x):
+    def forward(self, x):
+        x, residual = x
+
         x = self.norm(x)
-        for layer in self.layers:
-            x = layer(x)
+        for idx, layer in enumerate(self.layers):
+            if residual:
+                x = layer((x, residual[idx]))
+            else:
+                x = layer((x, []))
+
         x = self.pos_drop(x)
         x = self.patch_recover(x)
         return x
 
-    def forward(self, x):
-        x = self.forward_features(x)
-        return x
 
 class SwinTransformer(nn.Module):
     r""" Swin Transformer
@@ -1084,3 +1158,22 @@ class SwinTransformer(nn.Module):
         flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2 ** self.num_layers)
         flops += self.num_features * self.num_classes
         return flops
+
+if __name__ == '__main__':
+    img_size = 256
+    model = SwinGenerator(
+            img_size=img_size,
+            window_size=int(img_size/32),
+            in_chans = 1,
+            out_ch=1,
+            )
+    # model = SwinGeneratorResidual(
+    #         img_size=img_size,
+    #         window_size=int(img_size/32),
+    #         in_chans = 1,
+    #         out_ch=1,
+    #         residual_dense = True
+    #         )
+    print(model)
+    x = torch.rand(1, 1, 256, 256)
+    print(model(x).shape)

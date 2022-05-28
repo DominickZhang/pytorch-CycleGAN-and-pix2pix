@@ -2,7 +2,7 @@ from utils import parse_args, get_rank, setup_for_distributed, is_main_process
 from utils import create_logger, AverageMeter, get_grad_norm, load_checkpoint
 import os
 import datetime
-from models.swin_transformer import SwinGenerator
+from models.swin_transformer import SwinGenerator, SwinGeneratorResidual
 from monai.networks.nets import UNet
 from torch.utils.data import Dataset
 import h5py as h5
@@ -102,6 +102,21 @@ def create_model(model_name='swin_gen', img_size=256):
                 strides=strides,
                 num_res_units=2,
                 )
+    elif model_name == 'swin_gen_residual':
+        return SwinGeneratorResidual(
+            img_size=img_size,
+            window_size=int(img_size/32),
+            in_chans = 1,
+            out_ch=1,
+            )
+    elif model_name == 'swin_gen_residual_dense':
+        return SwinGeneratorResidual(
+            img_size=img_size,
+            window_size=int(img_size/32),
+            in_chans = 1,
+            out_ch=1,
+            residual_dense=True,
+            )
     else:
         raise ValueError(f"Unsupported model type: {model_name}")
 
@@ -567,10 +582,21 @@ if __name__ == '__main__':
     #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val4/brats/ckpt_epoch_146.pth --eval --cross_validation_index 4
     #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val5/brats/ckpt_epoch_149.pth --eval --cross_validation_index 5
     #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val6/brats/ckpt_epoch_147.pth --eval --cross_validation_index 6
-    #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val7/brats/ckpt_epoch_149.pth --eval --cross_validation_index 7
+    #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1423 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output output/ --resume /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/swingen_l1_val7/brats/ckpt_epoch_149.pth --cross_validation_index 7 --data_path_test /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness --eval 
 
     ## 052522
     # CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_wide/val0 --model_name unet_wide
-    # CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_wide/val1 --model_name unet_wide --cross_validation_index 1
-    # CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val0 --model_name unet_deep
-    # CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val1 --model_name unet_deep --cross_validation_index 1
+    # CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1235 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_wide/val1 --model_name unet_wide --cross_validation_index 1
+    # CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1236 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val0 --model_name unet_deep
+    # CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1237 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val1 --model_name unet_deep --cross_validation_index 1
+
+    ## 052622
+    # CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1236 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val2 --model_name unet_deep --cross_validation_index 2
+    # CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1237 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val3 --model_name unet_deep --cross_validation_index 3
+
+    ## 052822
+    # CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_wide/val2 --model_name unet_wide --cross_validation_index 2
+    # CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1235 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_wide/val3 --model_name unet_wide --cross_validation_index 3
+
+    # CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1236 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val4 --model_name unet_deep --cross_validation_index 4
+    # CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1237 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val5 --model_name unet_deep --cross_validation_index 5
