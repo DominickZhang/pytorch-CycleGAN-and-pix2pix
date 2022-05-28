@@ -783,13 +783,13 @@ class SwinGeneratorResidual(nn.Module):
         x, residual = self.encoder(x)
         
         for idx, e in enumerate(residual):
-            print(f"The {idx}-th stage >>>>>>>>>>>>")
+            #print(f"The {idx}-th stage >>>>>>>>>>>>")
             for idxi, ei in enumerate(e):
                 if isinstance(ei, list):
                     ei.reverse()
-                    print([eii.shape for eii in ei])
-                else:
-                    print(f"The shape of downsampled feature maps: {ei.shape}")
+                #     print([eii.shape for eii in ei])
+                # else:
+                #     print(f"The shape of downsampled feature maps: {ei.shape}")
             e.reverse()
         residual.reverse()
 

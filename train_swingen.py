@@ -35,11 +35,12 @@ class BratsDatasetHDF5(Dataset):
             return len(self.file[self.key][0])
 
     def __getitem__(self, idx):
-        idx = int(idx)
+        #idx = int(idx)
         if self.key is None:
             index = idx
         else:
             index = self.file[self.key][self.cross_validation_index][idx]
+        index = int(index)
         img = self.file['data'][index]
         target = self.file['label'][index]
 
