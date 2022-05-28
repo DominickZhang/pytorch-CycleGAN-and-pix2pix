@@ -35,6 +35,7 @@ class BratsDatasetHDF5(Dataset):
             return len(self.file[self.key][0])
 
     def __getitem__(self, idx):
+        idx = int(idx)
         if self.key is None:
             index = idx
         else:
@@ -600,3 +601,7 @@ if __name__ == '__main__':
 
     # CUDA_VISIBLE_DEVICES=2 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1236 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val4 --model_name unet_deep --cross_validation_index 4
     # CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1237 train_swingen.py --data_path /data/users/jzhang/NAS_robustness/output/train_bravo.h5 --output /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/checkpoints/brats/unet_deep/val5 --model_name unet_deep --cross_validation_index 5
+
+    ## 052922
+    # CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1234 train_swingen.py --data_path /mnt/hdd4T/jinnian/datasets/synthesis/train_bravo.h5 --output ./output/brats/swin_residual/val0 --model_name swin_gen_residual 
+    # CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1235 train_swingen.py --data_path /mnt/hdd4T/jinnian/datasets/synthesis/train_bravo.h5 --output ./output/brats/swin_residual_dense/val0 --model_name swin_gen_residual_dense
