@@ -312,7 +312,7 @@ def main():
                                         resize_im = img_size, batch_size=batch_size)
     data_loader_val, dataset_val = build_loader(datapath, key='val',
                                         cross_validation_index = cross_validation_index,
-                                        resize_im = img_size*2, batch_size=batch_size)
+                                        resize_im = img_size, batch_size=batch_size*2)
 
     try:
         data_loader_test, _ = build_loader(datapath, key='test',
