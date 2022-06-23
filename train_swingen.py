@@ -312,7 +312,7 @@ def main():
                                         resize_im = img_size, batch_size=batch_size)
     data_loader_val, dataset_val = build_loader(datapath, key='val',
                                         cross_validation_index = cross_validation_index,
-                                        resize_im = img_size, batch_size=batch_size)
+                                        resize_im = img_size*2, batch_size=batch_size)
 
     try:
         data_loader_test, _ = build_loader(datapath, key='test',
@@ -516,7 +516,15 @@ def test(args, model, criterion, data_loader, logger):
 
         logger.info(f">>> Predicting the {idx}(out of {N}) the volume...")
         
-        outputs = model(samples)
+        ## Otherwise OOM
+        outputs = []
+        batch_size = samples.shape[0]
+        batch_seg = batch_size // 4
+        outputs.append(model(samples[:batch_seg]))
+        outputs.append(model(samples[batch_seg: batch_seg*2]))
+        outputs.append(model(samples[batch_seg*2: batch_seg*3]))
+        outputs.append(model(samples[batch_seg*3:]))
+        outputs = torch.cat(outputs, axis=0)
 
         loss = criterion(outputs, targets)
 
