@@ -85,7 +85,7 @@ class SubsetSampler(torch.utils.data.Sampler):
         self.indices = indices
 
     def __iter__(self):
-        return (self.indices[i] for i in torch.range(len(self.indices)))
+        return (self.indices[i] for i in torch.arange(len(self.indices)))
 
     def __len__(self):
         return len(self.indices)
