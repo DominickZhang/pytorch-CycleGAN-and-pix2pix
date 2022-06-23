@@ -42,7 +42,8 @@ class BratsDatasetHDF5(Dataset):
             index = self.file[self.key][self.cross_validation_index][idx]
         index = int(index)
         img = self.file['data'][index]
-        target = self.file['label'][index]
+        #target = self.file['label'][index]
+        target = self.file['truth'][index]
 
         if self.transform is not None:
             img = self.transform(img)
