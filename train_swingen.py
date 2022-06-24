@@ -1,3 +1,8 @@
+## Do not support multi-gpu training for now!
+# The following functions will occupy all GPUs
+# DistributedDataParallel
+# torch.distributed.barrier()
+
 from utils import parse_args, get_rank, setup_for_distributed, is_main_process
 from utils import create_logger, AverageMeter, get_grad_norm, load_checkpoint
 import os
@@ -329,7 +334,7 @@ def main():
     logger.info(str(model))
     model.cuda()
     optimizer = build_optimizer(model, optimizer_name='adam', base_lr=base_lr, weight_decay=weight_decay)
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
+    #model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
     #model_without_ddp = unwrap_model(model)
 
     #criterion = torch.nn.MSELoss()
@@ -376,7 +381,7 @@ def main():
         train_one_epoch(args, model, criterion, data_loader_train, optimizer, epoch, logger)
         loss = validate(model, criterion, data_loader_val, logger)
         max_loss, max_file_path, _, _, num_ckpts = get_stats(output=output)
-        
+
         logger.info(f"Saving ckpt_epoch_{epoch}.pth...")
         if num_ckpts < save_max + 1: # N_{save_max} + Current model is saved
             save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)

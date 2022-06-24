@@ -52,6 +52,7 @@
 ## 061322
 # CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node 1 --master_port 1235 train_swingen.py --data_path /mnt/hdd4T/jinnian/datasets/synthesis/train_bravo.h5 --output ./output/brats/swin_residual_dense/val4 --cross_validation_index 4 --model_name swin_gen_residual_dense
 
-CUDA_VISIBLE_DEVICES="0" python -m torch.distributed.launch --nproc_per_node 1 --master_port 1235 train_swingen.py --data_path /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness/bravo_syn_2d.h5 --output ./output/brats/swin_residual_dense/val0 --cross_validation_index 0 --model_name swin_gen_residual_dense --save_max 1
+CUDA_VISIBLE_DEVICES="0" python -m torch.distributed.launch --nproc_per_node 1 --master_port 1230 train_swingen.py --data_path /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness/bravo_syn_2d.h5 --output ./output/brats/swin_residual_dense/val0 --cross_validation_index 0 --model_name swin_gen_residual_dense --save_max 1
+CUDA_VISIBLE_DEVICES="1" python -m torch.distributed.launch --nproc_per_node 1 --master_port 1231 train_swingen.py --data_path /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness/bravo_syn_2d.h5 --output ./output/brats/swin_residual_dense/val1 --cross_validation_index 1 --model_name swin_gen_residual_dense --save_max 1
 
-CUDA_VISIBLE_DEVICES="0" python -m torch.distributed.launch --use_env train_swingen.py --data_path /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness/bravo_syn_2d.h5 --output ./output/brats/swin_residual_dense/val0 --cross_validation_index 0 --model_name swin_gen_residual_dense --save_max 1
+CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --use_env train_swingen.py --data_path /data/data_mrcv2/MCMILLAN_GROUP/50_users/jinnian/nas-robustness/bravo_syn_2d.h5 --output ./output/brats/swin_residual_dense/val0 --cross_validation_index 0 --model_name swin_gen_residual_dense --save_max 1
