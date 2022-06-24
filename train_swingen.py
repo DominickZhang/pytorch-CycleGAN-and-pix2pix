@@ -13,6 +13,7 @@ import timm
 import time
 from termcolor import colored
 import torch.distributed as dist
+import torch.backends.cudnn as cudnn
 import numpy as np
 from timm.utils.model import unwrap_model
 
@@ -296,12 +297,14 @@ def main():
         rank = -1
         world_size = -1
 
-    try:
-        torch.cuda.set_device(args.local_rank)
-        torch.distributed.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
-        torch.distributed.barrier()
-    except:
-        pass
+
+    torch.cuda.set_device(args.local_rank)
+    torch.distributed.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
+    # torch.distributed.barrier()
+    seed = args.random_seed + dist.get_rank()
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    cudnn.benchmark = True
 
     os.makedirs(output, exist_ok=True)  
     logger = create_logger(args.output, dist_rank=get_rank(), name="Swin Generator")
@@ -327,7 +330,7 @@ def main():
     model.cuda()
     optimizer = build_optimizer(model, optimizer_name='adam', base_lr=base_lr, weight_decay=weight_decay)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
-    model_without_ddp = unwrap_model(model)
+    #model_without_ddp = unwrap_model(model)
 
     #criterion = torch.nn.MSELoss()
     criterion = torch.nn.L1Loss()
@@ -373,13 +376,18 @@ def main():
         train_one_epoch(args, model, criterion, data_loader_train, optimizer, epoch, logger)
         loss = validate(model, criterion, data_loader_val, logger)
         max_loss, max_file_path, _, _, num_ckpts = get_stats(output=output)
-        if num_ckpts < save_max:
-            save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
-        elif max_loss > loss:
-            os.remove(max_file_path)
+        
+        logger.info(f"Saving ckpt_epoch_{epoch}.pth...")
+        if num_ckpts < save_max + 1: # N_{save_max} + Current model is saved
             save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
         else:
-            logger.info(f"Skip saving ckpt_epoch_{epoch}.pth...")
+            os.remove(max_file_path)
+            save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
+        # elif max_loss > loss:
+        #     os.remove(max_file_path)
+        #     save_checkpoint(args, epoch, model, opt_metric, loss, optimizer, logger)
+        # else:
+        #     logger.info(f"Skip saving ckpt_epoch_{epoch}.pth...")
         logger.info(f"Loss of the network on the {len(dataset_val)} validation images: {loss:.5f}%")
         opt_metric = min(opt_metric, loss)
         logger.info(f"Optimal Metric: {opt_metric:.5f}")
