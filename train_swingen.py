@@ -2,6 +2,7 @@
 # The following functions will occupy all GPUs
 # DistributedDataParallel
 # torch.distributed.barrier()
+# torch.distributed.all_reduce()
 
 from utils import parse_args, get_rank, setup_for_distributed, is_main_process
 from utils import create_logger, AverageMeter, get_grad_norm, load_checkpoint
@@ -304,8 +305,8 @@ def main():
 
 
     torch.cuda.set_device(args.local_rank)
-    torch.distributed.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
-    # torch.distributed.barrier()
+    dist.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
+    torch.distributed.barrier()
     seed = args.random_seed + dist.get_rank()
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -334,7 +335,7 @@ def main():
     logger.info(str(model))
     model.cuda()
     optimizer = build_optimizer(model, optimizer_name='adam', base_lr=base_lr, weight_decay=weight_decay)
-    #model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
     #model_without_ddp = unwrap_model(model)
 
     #criterion = torch.nn.MSELoss()
