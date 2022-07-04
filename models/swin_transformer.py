@@ -181,7 +181,8 @@ class SwinTransformerBlock(nn.Module):
 
     def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm):
+                 act_layer=nn.GELU, norm_layer=nn.LayerNorm,
+                 is_attn_residual=False, is_decoder=False):
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -194,6 +195,9 @@ class SwinTransformerBlock(nn.Module):
             self.shift_size = 0
             self.window_size = min(self.input_resolution)
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
+
+        self.is_attn_residual = is_attn_residual
+        self.is_decoder = is_decoder
 
         self.norm1 = norm_layer(dim)
         self.attn = WindowAttention(
@@ -231,6 +235,9 @@ class SwinTransformerBlock(nn.Module):
         self.register_buffer("attn_mask", attn_mask)
 
     def forward(self, x):
+        if self.is_decoder and self.is_attn_residual:
+            x, feature_enc = x
+
         H, W = self.input_resolution
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
@@ -265,9 +272,20 @@ class SwinTransformerBlock(nn.Module):
 
         # FFN
         x = shortcut + self.drop_path(x)
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
 
-        return x
+        if self.is_decoder:
+            if self.is_attn_residual:
+                x += feature_enc
+            x = x + self.drop_path(self.mlp(self.norm2(x)))
+            return x
+        else:
+            if self.is_attn_residual:
+                attn_residual = x
+            else:
+                attn_residual = None
+            x = x + self.drop_path(self.mlp(self.norm2(x)))
+
+            return x, attn_residual
 
     def extra_repr(self) -> str:
         return f"dim={self.dim}, input_resolution={self.input_resolution}, num_heads={self.num_heads}, " \
@@ -409,7 +427,7 @@ class BasicLayer(nn.Module):
     def __init__(self, dim, input_resolution, depth, num_heads, window_size,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
                  drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False,
-                 residual_dense=False, is_residual=False):
+                 residual_dense=False, is_residual=False, is_attn_residual=False):
 
         super().__init__()
         self.dim = dim
@@ -426,11 +444,13 @@ class BasicLayer(nn.Module):
                                  qkv_bias=qkv_bias, qk_scale=qk_scale,
                                  drop=drop, attn_drop=attn_drop,
                                  drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
-                                 norm_layer=norm_layer)
+                                 norm_layer=norm_layer,
+                                 is_attn_residual=is_attn_residual)
             for i in range(depth)])
 
         self.residual_dense = residual_dense
         self.is_residual = is_residual
+        self.is_attn_residual = is_attn_residual
 
         # patch merging layer
         if downsample is not None:
@@ -442,11 +462,13 @@ class BasicLayer(nn.Module):
         residual = []
         for idx, blk in enumerate(self.blocks):
             if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x)
+                x, attn_residual = checkpoint.checkpoint(blk, x)
             else:
-                x = blk(x)
+                x, attn_residual = blk(x)
 
             if self.is_residual:
+                if attn_residual is not None:
+                    residual.append(attn_residual)
                 residual.append(x)
 
         if (not self.residual_dense) and self.is_residual:
@@ -489,13 +511,15 @@ class BasicLayer_Decoder(nn.Module):
 
     def __init__(self, dim, input_resolution, depth, num_heads, window_size,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0., norm_layer=nn.LayerNorm, upsample=None, use_checkpoint=False):
+                 drop_path=0., norm_layer=nn.LayerNorm, upsample=None, use_checkpoint=False, is_attn_residual=False):
 
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
         self.depth = depth
         self.use_checkpoint = use_checkpoint
+
+        self.is_attn_residual = is_attn_residual
 
         # build blocks
         self.blocks = nn.ModuleList([
@@ -506,7 +530,7 @@ class BasicLayer_Decoder(nn.Module):
                                  qkv_bias=qkv_bias, qk_scale=qk_scale,
                                  drop=drop, attn_drop=attn_drop,
                                  drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
-                                 norm_layer=norm_layer)
+                                 norm_layer=norm_layer, is_attn_residual=is_attn_residual, is_decoder=True)
             for i in range(depth)])
 
         # patch merging layer
@@ -518,13 +542,20 @@ class BasicLayer_Decoder(nn.Module):
     def forward(self, x):
         x, feature_list = x
         for idx, blk in enumerate(self.blocks):
-            if feature_list and idx < len(feature_list):
-                x += feature_list[idx]
-
-            if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x)
+            if self.is_attn_residual:
+                x += feature_list[2*idx]
+                if self.use_checkpoint:
+                    x = checkpoint.checkpoint(blk, (x, feature_list[2*idx+1]))
+                else:
+                    x = blk((x, feature_list[2*idx+1]))
             else:
-                x = blk(x)
+                if feature_list and idx < len(feature_list):
+                    x += feature_list[idx]
+
+                if self.use_checkpoint:
+                    x = checkpoint.checkpoint(blk, x)
+                else:
+                    x = blk(x)
 
         if self.upsample is not None:
             x = self.upsample(x)
@@ -766,7 +797,7 @@ class SwinGeneratorResidual(nn.Module):
                 window_size, mlp_ratio, qkv_bias, qk_scale, 
                 drop_rate, attn_drop_rate, drop_path_rate, 
                 norm_layer, ape, patch_norm, use_checkpoint,
-                residual_dense, is_residual,
+                residual_dense, is_residual, is_attn_residual,
                 )
 
         self.out_dim = self.encoder.num_features
@@ -777,7 +808,7 @@ class SwinGeneratorResidual(nn.Module):
                 self.out_dim, depths, num_heads, 
                 window_size, mlp_ratio, qkv_bias, qk_scale, 
                 drop_rate, attn_drop_rate, drop_path_rate, 
-                norm_layer, ape, patch_norm, use_checkpoint)
+                norm_layer, ape, patch_norm, use_checkpoint, is_attn_residual)
 
     def forward(self, x):
         x, residual = self.encoder(x)
@@ -830,7 +861,7 @@ class SwinEncoder(nn.Module):
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
                  use_checkpoint=False,
-                 residual_dense=False, is_residual=False):
+                 residual_dense=False, is_residual=False, is_attn_residual=False):
         super().__init__()
 
         self.num_layers = len(depths)
@@ -842,6 +873,7 @@ class SwinEncoder(nn.Module):
 
         self.is_residual = is_residual
         self.residual_dense = residual_dense
+        self.is_attn_residual = is_attn_residual
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -879,7 +911,7 @@ class SwinEncoder(nn.Module):
                                norm_layer=norm_layer,
                                downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
                                use_checkpoint=use_checkpoint,
-                               residual_dense=residual_dense, is_residual=is_residual)
+                               residual_dense=residual_dense, is_residual=is_residual, is_attn_residual=is_attn_residual)
             self.layers.append(layer)
 
         self.norm = norm_layer(self.num_features)
@@ -953,7 +985,7 @@ class SwinDecoder(nn.Module):
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-                 use_checkpoint=False):
+                 use_checkpoint=False, is_attn_residual=False):
         super().__init__()
 
         self.num_layers = len(depths)
@@ -970,6 +1002,8 @@ class SwinDecoder(nn.Module):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
         dpr = dpr[::-1]
 
+        self.is_attn_residual = is_attn_residual
+
         # build layers
         self.layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
@@ -985,7 +1019,8 @@ class SwinDecoder(nn.Module):
                                drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
                                norm_layer=norm_layer,
                                upsample=PatchUpsample if (i_layer < self.num_layers - 1) else None,
-                               use_checkpoint=use_checkpoint)
+                               use_checkpoint=use_checkpoint,
+                               is_attn_residual = is_attn_residual,)
             self.layers.append(layer)
 
         input_resolution = [input_resolution[0]*(2**(self.num_layers-1)), input_resolution[1]*(2**(self.num_layers-1)),]

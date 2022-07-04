@@ -147,6 +147,15 @@ def create_model(model_name='swin_gen', img_size=256):
             out_ch=1,
             residual_dense=True,
             )
+    elif model_name == 'swin_gen_residual_attn':
+        return SwinGeneratorResidual(
+            img_size=img_size,
+            window_size=int(img_size/32),
+            in_chans = 1,
+            out_ch=1,
+            residual_dense=True,
+            is_attn_residual=True,
+            )
     else:
         raise ValueError(f"Unsupported model type: {model_name}")
 
