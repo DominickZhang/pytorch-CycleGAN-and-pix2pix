@@ -327,15 +327,17 @@ def main():
 
     data_loader_train, _ = build_loader(datapath, key='train',
                                         cross_validation_index = cross_validation_index,
-                                        resize_im = img_size, batch_size=batch_size)
+                                        resize_im = img_size, batch_size=batch_size,
+                                        num_workers=2)
     data_loader_val, dataset_val = build_loader(datapath, key='val',
                                         cross_validation_index = cross_validation_index,
-                                        resize_im = img_size, batch_size=batch_size*2)
+                                        resize_im = img_size, batch_size=batch_size*2,
+                                        num_workers=2)
 
     try:
         data_loader_test, _ = build_loader(datapath, key='test',
                                             cross_validation_index = cross_validation_index,
-                                            resize_im = img_size, batch_size=batch_size)
+                                            resize_im = img_size, batch_size=batch_size,num_workers=2)
     except Exception as e:
         logging.info(f"Creating test data loader fails...{e}")
         data_loader_test = None
